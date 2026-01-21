@@ -849,8 +849,13 @@ app.layout = html.Div([
         dbc.Row([
             dbc.Col([
                 html.Hr(style={'marginTop': '30px'}),
-                html.P("EHE Census Dashboard | Data: Department for Education",
-                      style={'textAlign': 'center', 'color': '#6c757d', 'fontSize': '0.85rem'})
+                html.P([
+                    "EHE Census Dashboard | Data: ",
+                    html.A("Explore Education Statistics (DfE)",
+                           href="https://explore-education-statistics.service.gov.uk/find-statistics/elective-home-education/2025-26-autumn-term",
+                           target="_blank",
+                           style={'color': '#3498db'})
+                ], style={'textAlign': 'center', 'color': '#6c757d', 'fontSize': '0.85rem'})
             ])
         ], className="mt-4")
     ], fluid=True, style={'padding': '0 20px'})
