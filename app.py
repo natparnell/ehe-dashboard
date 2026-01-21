@@ -103,6 +103,9 @@ REASON_COLORS = {
     'Other': '#8D6E63',  # Brown
 }
 
+# Fixed order for year groups (Reception through Year 11)
+YEAR_GROUP_ORDER = ['Reception'] + [f'Year {i}' for i in range(1, 12)]
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
@@ -349,13 +352,15 @@ def build_year_group_chart(year, geo_level='National', geo_name=None):
 
     fig = px.bar(
         data, x='breakdown', y='child_percent_numeric',
-        title=title
+        title=title,
+        category_orders={'breakdown': YEAR_GROUP_ORDER}
     )
     fig.update_traces(marker_color='#2E86AB')
     fig.update_layout(
         xaxis_title='Year Group',
         yaxis_title='Percentage',
-        showlegend=False
+        showlegend=False,
+        xaxis={'categoryorder': 'array', 'categoryarray': YEAR_GROUP_ORDER}
     )
     return fig
 
@@ -1058,12 +1063,19 @@ def update_time_series(geo_level, geo_name, breakdown):
         data = data[data['child_count_numeric'].notna()]
         data = data.sort_values('sort_key')
 
+        # Set category orders based on breakdown type
+        cat_orders = {'year_term': year_term_order}
+        if breakdown == 'Year group':
+            cat_orders['breakdown'] = YEAR_GROUP_ORDER
+        elif breakdown == 'Reason':
+            cat_orders['breakdown'] = list(REASON_COLORS.keys())
+
         fig = px.bar(
             data, x='year_term', y='child_count_numeric',
             color='breakdown',
             barmode='group',
             hover_data={'academic_year': True, 'time_identifier': True},
-            category_orders={'year_term': year_term_order}
+            category_orders=cat_orders
         )
         fig.update_layout(
             title=f'EHE by {breakdown} Over Time - {geo_name or "National"}',
