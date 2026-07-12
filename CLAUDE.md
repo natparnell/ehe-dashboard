@@ -4,9 +4,10 @@
 
 Interactive dashboard on the DfE "Elective Home Education" statistics for England, with a focus on the South West region and the Cornwall, Plymouth and Devon local authorities (the WeST footprint, an LA-area proxy, not WeST's own pupils). Rebuilt July 2026 from the earlier Python/Dash tool into a static React app, fixing that tool's central methodology flaw (it silently summed counts, rates and percentages across terms) and tying every displayed figure to a published DfE value through a reconciliation test suite.
 
-- **Deploy target:** Firebase Hosting, target `ehe` -> site `west-ehe` on the shared project `west-analytics-47c83`. Deploy with `firebase deploy --only hosting:ehe` ONLY (see the STOP note below). Manual, only after Nat has reviewed on localhost.
+- **Live URL:** https://west-ehe.web.app (Firebase Hosting, target `ehe` -> site `west-ehe` on the shared project `west-analytics-47c83`). Deploy with `firebase deploy --only hosting:ehe` ONLY (see the STOP note below). Manual deploy, never auto.
 - **GitHub repo:** `natparnell/ehe-dashboard` — **PUBLIC**. Do not add anything WeST-internal (pupil-level data, credentials, internal commentary) without making the repo private first.
-- **Status (12/07/2026):** rebuilt in a fresh context window; the build and all 60 tests are green.
+- **Status (12/07/2026):** rebuilt, adversarially reviewed (15 confirmed findings fixed and audited), shipped to west-ehe.web.app; all 60 tests green. The old Render service (ehe-dashboard.onrender.com) is defunct pending deletion from the Render dashboard.
+- **Linked from:** EduTrack sidebar Tools section (`~/CCP2/edutrack-analytics-portal/components/Sidebar.tsx`), the `CCP2/menu.html` tile, and the Palace schoolroom (`~/palace/js/config.js`) — all updated to the new URL 12/07/2026, but EduTrack and the Palace serve their own deployed copies, so each shows the new link only after its own next deploy.
 
 ## Stack
 
