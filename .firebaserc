@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "west-analytics-47c83"
+  },
+  "targets": {
+    "west-analytics-47c83": {
+      "hosting": {
+        "ehe": ["west-ehe"]
+      }
+    }
+  }
+}

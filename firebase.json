@@ -1,0 +1,23 @@
+{
+  "hosting": {
+    "target": "ehe",
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/processed/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+      },
+      {
+        "source": "/geo/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+      }
+    ]
+  }
+}

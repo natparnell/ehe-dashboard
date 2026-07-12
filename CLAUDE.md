@@ -2,72 +2,74 @@
 
 ## Overview
 
-Interactive dashboard on the DfE "Elective Home Education" census statistics for England, with a focus on the South West region and the Cornwall, Plymouth and Devon local authorities (the WeST footprint). Built January 2026; cloned back to this Mac on 12/07/2026 after the local copy went missing (only the GitHub repo survived).
+Interactive dashboard on the DfE "Elective Home Education" statistics for England, with a focus on the South West region and the Cornwall, Plymouth and Devon local authorities (the WeST footprint, an LA-area proxy, not WeST's own pupils). Rebuilt July 2026 from the earlier Python/Dash tool into a static React app, fixing that tool's central methodology flaw (it silently summed counts, rates and percentages across terms) and tying every displayed figure to a published DfE value through a reconciliation test suite.
 
-- **Live URL:** https://ehe-dashboard.onrender.com/
-- **Hosting:** Render, free tier — cold starts take ~30 seconds after idle
+- **Deploy target:** Firebase Hosting, target `ehe` -> site `west-ehe` on the shared project `west-analytics-47c83`. Deploy with `firebase deploy --only hosting:ehe` ONLY (see the STOP note below). Manual, only after Nat has reviewed on localhost.
 - **GitHub repo:** `natparnell/ehe-dashboard` — **PUBLIC**. Do not add anything WeST-internal (pupil-level data, credentials, internal commentary) without making the repo private first.
-- **Deploy:** presumed auto-deploy on push to `main` (standard Render setup) but NOT confirmed from this machine — check the Render dashboard before relying on it.
-- **Status (12/07/2026):** Nat plans to refactor this app and move it (new context window). Treat the current code as the starting point, not a settled architecture.
+- **Status (12/07/2026):** rebuilt in a fresh context window; the build and all 60 tests are green.
 
 ## Stack
 
-Python + Dash 2.14+ / dash-bootstrap-components (Flatly theme) + Plotly + pandas, served by gunicorn in production. This matches Nat's preferred AAR analytics stack (see `~/CLAUDE.md`, "Default stack for dashboards"), except there is no DuckDB layer: the CSV is loaded straight into a pandas DataFrame at import time.
+React 19 + TypeScript (strict) + Vite 7 + Tailwind v4 (via `@tailwindcss/vite`, no `tailwind.config.js`). Custom typed SVG chart components (no chart library); `d3-geo` / `d3-scale` / `d3-scale-chromatic` for the LA choropleth only. `papaparse` (dev only) for preprocessing; `vitest` + `@testing-library/react` + jsdom for tests. `lucide-react` icons, `html-to-image` for chart PNG download. No router: a `views.ts` registry + one `switch` in `App.tsx`; a single `dataService.ts` fetch boundary with an in-memory + IndexedDB (`ehe-cache`) version gate.
 
 ## Run locally
 
 ```bash
 cd ~/ehe-dashboard
-pip install -r requirements.txt   # or use a venv
-python app.py                     # Dash dev server on http://127.0.0.1:8050
+npm install
+npm run preprocess   # streams data/*.csv -> public/processed/*.json (required before dev/test/build)
+npm run dev          # Vite dev server on http://127.0.0.1:3009
 ```
 
-Port comes from the `PORT` env var (Render sets it) with 8050 as the local default. `DEBUG` env var toggles debug mode (defaults to True locally). `server = app.server` is exposed for gunicorn.
+`public/processed/` is git-ignored (regenerable build artefacts), so run `npm run preprocess` after a fresh clone and after any data refresh before `dev`, `test` or `build`.
+
+## Test, lint and build
+
+```bash
+npm test          # 60 tests: src/recon.test.ts + src/views.smoke.test.tsx
+npm run lint
+npm run build     # preprocess && tsc -b && vite build && stamp dist/version.json -> dist/
+```
 
 ## File map
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `app.py` | The whole app, ~1,270 lines: data loading, aggregation helpers, chart builders, layout, callbacks |
-| `ehe_census.csv` | The DfE census extract, ~59,000 rows, committed to the repo (public OGL data) |
-| `DASHBOARD_STYLING.md` | Styling guide: Flatly theme, `CUSTOM_STYLE` object, header gradient, KPI card patterns |
-| `requirements.txt` | pandas, plotly, dash, dash-bootstrap-components, gunicorn |
-
-`app.py` is organised in commented sections: data loading (`load_and_prepare_data`), aggregation helpers (`get_national_totals` / `get_regional_totals` / `get_la_totals`), chart builders (`build_*_chart`), layout (one `dbc.Tab` per view), then callbacks.
+| `data/ehe_census.csv` | DfE census-date stock, ~59,000 rows, committed (public OGL data) |
+| `data/ehe_academic_year.csv` | DfE academic-year at-any-point flow, 655 rows, one year behind the census |
+| `data/README.md` | Source URLs, refresh path, suppression semantics, boundary attribution |
+| `scripts/preprocess.mjs` | Streams the two CSVs into `public/processed/*.json` (the only build step that touches data) |
+| `scripts/DATA_SHAPES.md` | The exact JSON contract each view builds against |
+| `public/geo/ctyua_2023_buc.geojson` | ONS Dec-2023 CTYUA boundaries (England) for the choropleth |
+| `src/` | React app: `App.tsx`, `views.ts`, `services/dataService.ts`, `components/views/*`, `components/charts/*`, `utils/*` |
+| `src/recon.test.ts` | Reconciliation against published DfE anchors |
+| `src/views.smoke.test.tsx` | jsdom render of all 10 views against the real generated JSON |
+| `REBUILD_SPEC.md` | The authoritative build spec |
 
 ## Data
 
 Source: DfE Explore Education Statistics, "Elective home education" release
 (https://explore-education-statistics.service.gov.uk/find-statistics/elective-home-education/2025-26-autumn-term).
 
-CSV shape:
-- `time_period` — 202223, 202324, 202425, 202526 (converted to "2022/23" style in `academic_year`)
-- `time_identifier` — Autumn / Spring / Summer term (2025/26 has autumn only, being the latest release)
-- `geographic_level` — National / Regional / Local authority
-- `breakdown_topic` — Total, Reason, Sex, Year group (each with a `breakdown` value)
-- `child_count`, `child_percent`, `rate_per_100`
+Headline anchor: England, 2025/26 autumn term, 126,000 children in EHE, rate 1.5 per 100. Hard rules enforced in `preprocess.mjs` and re-checked by the tests: suppression symbols (`low` / `x` / `z` / blank) parse to **null, never 0**, with the symbol preserved; only counts are ever summed (within one term-point), never rates or percentages; the footprint pooled rate is population-weighted via the back-out identity, never a mean of LA rates.
 
-Headline anchor: England, 2025/26 autumn term, 126,000 children in EHE, rate 1.5 per 100.
-
-**Gotcha:** LA names in the CSV contain embedded commas inside quoted fields (e.g. "Bournemouth, Christchurch and Poole"); always parse with pandas, never naive comma splitting.
+**Gotcha:** LA names in the CSV contain embedded commas inside quoted fields (e.g. "Bournemouth, Christchurch and Poole"); always parse with papaparse, never naive comma splitting.
 
 ## Dashboard structure
 
-Six `dbc.Tab` views:
-1. **Overview** — national KPI cards + national trend
-2. **Regional Comparison** — counts and rates per 100 by region, South West highlighted by default
-3. **Local Authorities** — LA comparison and trends (Cornwall / Plymouth / Devon focus)
-4. **Time Analysis** — term-by-term trends (`year_term` axis, e.g. "2022/23 Autumn")
-5. **Demographics & Reasons** — reasons for EHE, year-group distribution, sex split, at national / regional / LA level
-6. **Data Explorer** — filterable table with CSV download (`dcc.send_data_frame`)
+10 views (a `views.ts` registry + one `switch` in `App.tsx`), grouped Start here / Places / Questions / Reference: Headlines, National, Regional, WeST Footprint, LA Map, Stocks/Flows/Enforcement, Year Groups, Reasons, Data Explorer, Methodology.
+
+## STOP — shared Firebase project `west-analytics-47c83`
+
+This site shares a Firebase project with many other WeST apps (Strategic Cascade, EduTrack, TechSprint, etc.). **Only ever `firebase deploy --only hosting:ehe`.** A bare `firebase deploy` (or any `firestore:rules` deploy) replaces the project-wide Firestore ruleset shared with those apps and takes them offline. See the STOP section in `~/CLAUDE.md`. The site is created once at first deploy with `firebase hosting:sites:create west-ehe`; it is not created during the build.
 
 ## Where it's linked from
 
 - EduTrack Analytics Portal sidebar, Tools section ("EHE Dashboard" external link) — `~/CCP2/edutrack-analytics-portal/components/Sidebar.tsx`
-- `CCP2/menu.html` tile "EHE Dashboard (Elective Home Education)" (performanceAnalyticsApps manifest)
+- `CCP2/menu.html` tile "EHE Dashboard (Elective Home Education)"
 - The Palace schoolroom ("HOME EDUCATION" picture) — `~/palace/js/config.js`
 
-If the URL changes when the app is moved off Render, update all three.
+The live URL is now `https://west-ehe.web.app` (Firebase). Update all three link sites when the deploy first goes live (previously the app was on Render at `https://ehe-dashboard.onrender.com/`, now retired).
 
 ## Conventions
 
